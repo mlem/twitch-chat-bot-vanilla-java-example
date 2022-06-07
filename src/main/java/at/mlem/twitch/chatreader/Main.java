@@ -24,8 +24,6 @@ import static java.util.stream.Collectors.joining;
  */
 public class Main {
 
-    // args: https://www.twitch.tv/amaz 7yrqz00xs69ift41c5g28q4b57tbqk
-
     /**
      * @param args <channelname> <oauthToken> <botName>
      */
