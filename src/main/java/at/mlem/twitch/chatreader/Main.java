@@ -67,11 +67,13 @@ public class Main {
         private final String channelName;
         private final String oauthToken;
         private final String botName;
+        private final boolean debug;
 
         public WebSocketListener(Args arguments) {
             this.channelName = arguments.channelName;
             this.botName = arguments.botName;
             this.oauthToken = arguments.oauthToken;
+            this.debug = arguments.debug;
         }
 
         @Override
@@ -93,23 +95,26 @@ public class Main {
 
         @Override
         public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-            System.out.println(String.format("Received Binary over WebSocket: %s", data));
+            if (debug)
+                System.out.println(String.format("Received Binary over WebSocket: %s", data));
             return WebSocket.Listener.super.onBinary(webSocket, data, last);
         }
 
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
             CompletionStage<?> completionStage = WebSocket.Listener.super.onText(webSocket, data, last);
-            System.out.println(String.format("Received Text over WebSocket: %s", data));
+            if (debug)
+                System.out.println(String.format("Received Text over WebSocket: %s", data));
             String receivedMessage = data.toString();
             if (receivedMessage.contains("PRIVMSG")) {
                 PrivMsg privMsg = new PrivMsg(receivedMessage);
-                System.out.println(privMsg.userType);
+                System.out.println(String.format("%s: %s", privMsg.displayName, privMsg.message.messageString));
             } else if (receivedMessage.contains("PING")) {
                 int indexOfLastDoppelpunkt = receivedMessage.lastIndexOf(":");
                 String responsePong = "PONG " + receivedMessage.substring(indexOfLastDoppelpunkt, receivedMessage.length() - 1);
                 webSocket.sendText(responsePong, true);
-                System.out.println("answering ping with: " + responsePong);
+                if (debug)
+                    System.out.println("answering ping with: " + responsePong);
             }
             return completionStage;
         }
@@ -140,6 +145,7 @@ public class Main {
         }
 
         private class PrivMsg {
+            private Message message;
             private String userType;
             private String userId;
             private String turbo;
@@ -206,6 +212,7 @@ public class Main {
 
                     } else if (part.startsWith("user-type")) {
                         userType = extractValue(part);
+                        message = new Message(userType);
 
                     }
                 });
@@ -219,11 +226,21 @@ public class Main {
                     return null;
                 }
             }
+
+            private class Message {
+                private final String messageString;
+
+                public Message(String userType) {
+                    String interestingPart = userType.substring(userType.indexOf("PRIVMSG"), userType.length() - 1);
+                    messageString = interestingPart.substring(interestingPart.indexOf(":")+1, interestingPart.length() - 1);
+                }
+            }
         }
     }
 
     private static class Args {
 
+        private Boolean debug;
         private String botName;
         private String channelName;
         private String oauthToken;
@@ -241,6 +258,11 @@ public class Main {
                 channelName = split[split.length - 1];
                 oauthToken = args[1];
                 botName = args[2];
+            }
+            if (args.length >= 4) {
+                debug = Boolean.valueOf(args[3]);
+            } else {
+                debug = Boolean.FALSE;
             }
         }
     }
